@@ -8,7 +8,7 @@ const Task = () => {
   const [estimateNotes, setEstimateNotes] = useState('');
   const [actualHours, setActualHours] = useState('');
   const [notes, setNotes] = useState('');
-  const [error, seterror] = useState(false);
+  const [error, setError] = useState(false);
   const [Edit, setEdit] = useState(false)
 
 
@@ -50,61 +50,73 @@ const Task = () => {
   
   
 
+    const normalizeTime1=(time)=>{
+      const hours = Math.floor(time); // This will store 2
+      const minutes = Math.round((time - hours) * 100); // This will store 75
+
+      const minutesModulo = minutes % 60; // This will store 15
+      const quotient = Math.floor(minutes / 60); // This will store 1
+
+      const newHours = hours + quotient; // 3
+      const newMinutes = minutesModulo; // 15
+
+       return `${newHours}.${newMinutes.toString().padStart(2, '0')}`; // "3.15"
+
+    }
     
   
     const normalizeTime = (time) => {
-      if (isNaN(time) || time < 0) {
-        throw new Error('Invalid time format. Please enter a non-negative number representing hours and minutes.');
-      }
-  
       const hours = Math.floor(time);
-      let minutes = (time - hours) * 100;
-  
-      minutes = Math.round(minutes) % 60;
-      minutes = minutes.toString().padStart(2, '0');
-
-      console.log(`${hours}.${minutes}`)
-  
-      return `${hours}.${minutes}`;
+      const minutesDecimal = (time - hours) * 100;
+      const minutes = Math.round(minutesDecimal); // Extract minutes from decimal part
+      
+      // Add the extracted minutes to the existing minutes
+      const totalMinutes = (hours * 60) + minutes;
+    
+      // Calculate the new hours and minutes
+      const normalizedHours = Math.floor(totalMinutes / 60);
+      const normalizedMinutes = totalMinutes % 60;
+    
+      return `${normalizedHours}.${normalizedMinutes.toString().padStart(2, '0')}`;
     };
-  
+    
     const handleSubmit = async (event) => {
       event.preventDefault();
-  
+    
       try {
-        seterror(false);
-  
-        // Validate actualHours format
-        const isValidFormat = /^\d+(\.\d{1,2})?$/; // Regex pattern for a number with up to 2 decimal places
-        if (!isValidFormat.test(actualHours)) {
-          throw new Error('Invalid time format. Please enter time in hours with up to 2 decimal places.');
-        }
-  
+        setError(false);
+    
         // Normalize the actualHours value
-        const normalizedActualHours = normalizeTime(parseFloat(actualHours));
-  
+        const normalizedActualHours = normalizeTime1(parseFloat(actualHours));
+        const normalizedEstimateHours = normalizeTime1(parseFloat(timeEstimate));
+        console.log(taskNumber,
+          timeEstimate,
+          estimateNotes,
+          actualHours,normalizedActualHours,
+          notes,)
+    
         // Check if task with the same ID exists in the tasks array
-        const existingTask = tasks.find(task => task.taskNumber === taskNumber);
+        const existingTask = tasks.find((task) => task.taskNumber === taskNumber);
         if (existingTask) {
           // If task with the same ID exists, update it
           await axios.put(`/api/tasks/${existingTask._id}`, {
             taskNumber,
-            timeEstimate,
+            timeEstimate:normalizedEstimateHours,
             estimateNotes,
             actualHours: normalizedActualHours,
-            notes
+            notes,
           });
         } else {
           // If task with the same ID doesn't exist, create a new task
           await axios.post('/api/tasks', {
             taskNumber,
-            timeEstimate,
+            timeEstimate:normalizedEstimateHours,
             estimateNotes,
             actualHours: normalizedActualHours,
-            notes
+            notes,
           });
         }
-  
+    
         // Clear form fields after successful submission
         setTaskNumber('');
         setTimeEstimate('');
@@ -114,10 +126,11 @@ const Task = () => {
         // Optionally, you can add a success message or redirect the user
       } catch (error) {
         console.error('Error saving task:', error);
-        seterror(true);
+        setError(true);
         // Optionally, you can display an error message to the user
       }
     };
+    
     
    
     
