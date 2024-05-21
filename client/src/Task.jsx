@@ -9,9 +9,7 @@ const Task = () => {
   const [actualHours, setActualHours] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState(false);
-  const [Edit, setEdit] = useState(false)
-
-
+  const [edit, setEdit] = useState(false);
   const [tasks, setTasks] = useState([]);
 
   useEffect(() => {
@@ -32,7 +30,6 @@ const Task = () => {
     if (totalHours && finalNotes) {
       try {
         await axios.post(`/api/tasks/${taskId}/complete`, { totalHours, finalNotes });
-        // Update the task in the state to mark it as completed
         setTasks(tasks.map(task => task._id === taskId ? { ...task, completed: true } : task));
       } catch (error) {
         console.error('Error completing task:', error);
@@ -46,108 +43,67 @@ const Task = () => {
     setTimeEstimate(taskToEdit.timeEstimate);
     setEstimateNotes(taskToEdit.estimateNotes);
     setActualHours(taskToEdit.actualHours);
-    setNotes(taskToEdit.notes);  };
-  
-  
+    setNotes(taskToEdit.notes);
+    setEdit(true);
+  };
 
-    const normalizeTime1=(time)=>{
-      const hours = Math.floor(time); // This will store 2
-      const minutes = Math.round((time - hours) * 100); // This will store 75
+  const normalizeTime = (time) => {
+    const hours = Math.floor(time);
+    const minutes = Math.round((time - hours) * 100);
 
-      const minutesModulo = minutes % 60; // This will store 15
-      const quotient = Math.floor(minutes / 60); // This will store 1
+    const minutesModulo = minutes % 60;
+    const quotient = Math.floor(minutes / 60);
 
-      const newHours = hours + quotient; // 3
-      const newMinutes = minutesModulo; // 15
+    const newHours = hours + quotient;
+    const newMinutes = minutesModulo;
 
-       return `${newHours}.${newMinutes.toString().padStart(2, '0')}`; // "3.15"
+    return `${newHours}.${newMinutes.toString().padStart(2, '0')}`;
+  };
 
-    }
-    
-  
-    const normalizeTime = (time) => {
-      const hours = Math.floor(time);
-      const minutesDecimal = (time - hours) * 100;
-      const minutes = Math.round(minutesDecimal); // Extract minutes from decimal part
-      
-      // Add the extracted minutes to the existing minutes
-      const totalMinutes = (hours * 60) + minutes;
-    
-      // Calculate the new hours and minutes
-      const normalizedHours = Math.floor(totalMinutes / 60);
-      const normalizedMinutes = totalMinutes % 60;
-    
-      return `${normalizedHours}.${normalizedMinutes.toString().padStart(2, '0')}`;
-    };
-    
-    const handleSubmit = async (event) => {
-      event.preventDefault();
-    
-      try {
-        setError(false);
-    
-        // Normalize the actualHours value
-        const normalizedActualHours = normalizeTime1(parseFloat(actualHours));
-        const normalizedEstimateHours = normalizeTime1(parseFloat(timeEstimate));
-        console.log(taskNumber,
-          timeEstimate,
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    try {
+      setError(false);
+
+      const normalizedActualHours = normalizeTime(parseFloat(actualHours));
+      const normalizedEstimateHours = normalizeTime(parseFloat(timeEstimate));
+
+      const existingTask = tasks.find((task) => task.taskNumber === taskNumber);
+      if (existingTask) {
+        await axios.put(`/api/tasks/${existingTask._id}`, {
+          taskNumber,
+          timeEstimate: normalizedEstimateHours,
           estimateNotes,
-          actualHours,normalizedActualHours,
-          notes,)
-    
-        // Check if task with the same ID exists in the tasks array
-        const existingTask = tasks.find((task) => task.taskNumber === taskNumber);
-        if (existingTask) {
-          // If task with the same ID exists, update it
-          await axios.put(`/api/tasks/${existingTask._id}`, {
-            taskNumber,
-            timeEstimate:normalizedEstimateHours,
-            estimateNotes,
-            actualHours: normalizedActualHours,
-            notes,
-          });
-        } else {
-          // If task with the same ID doesn't exist, create a new task
-          await axios.post('/api/tasks', {
-            taskNumber,
-            timeEstimate:normalizedEstimateHours,
-            estimateNotes,
-            actualHours: normalizedActualHours,
-            notes,
-          });
-        }
-    
-        // Clear form fields after successful submission
-        setTaskNumber('');
-        setTimeEstimate('');
-        setEstimateNotes('');
-        setActualHours('');
-        setNotes('');
-        // Optionally, you can add a success message or redirect the user
-      } catch (error) {
-        console.error('Error saving task:', error);
-        setError(true);
-        // Optionally, you can display an error message to the user
+          actualHours: normalizedActualHours,
+          notes,
+        });
+      } else {
+        await axios.post('/api/tasks', {
+          taskNumber,
+          timeEstimate: normalizedEstimateHours,
+          estimateNotes,
+          actualHours: normalizedActualHours,
+          notes,
+        });
       }
-    };
-    
-    
-   
-    
-    
+
+      setTaskNumber('');
+      setTimeEstimate('');
+      setEstimateNotes('');
+      setActualHours('');
+      setNotes('');
+    } catch (error) {
+      console.error('Error saving task:', error);
+      setError(true);
+    }
+  };
 
   return (
-    <>
     <div className="max-w-lg mx-auto">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4"
-      >
+      <form onSubmit={handleSubmit} className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
         <div className="mb-4">
-          <label
-            className="block text-gray-700 text-sm font-bold mb-2"
-            htmlFor="taskNumber"
-          >
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="taskNumber">
             Task Number
           </label>
           <input
@@ -160,10 +116,7 @@ const Task = () => {
           />
         </div>
         <div className="mb-4">
-          <label
-            className="block text-gray-700 text-sm font-bold mb-2"
-            htmlFor="timeEstimate"
-          >
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="timeEstimate">
             Time Estimate (hours)
           </label>
           <input
@@ -177,10 +130,7 @@ const Task = () => {
           />
         </div>
         <div className="mb-4">
-          <label
-            className="block text-gray-700 text-sm font-bold mb-2"
-            htmlFor="estimateNotes"
-          >
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="estimateNotes">
             Estimate Notes
           </label>
           <textarea
@@ -192,10 +142,7 @@ const Task = () => {
           />
         </div>
         <div className="mb-4">
-          <label
-            className="block text-gray-700 text-sm font-bold mb-2"
-            htmlFor="actualHours"
-          >
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="actualHours">
             Actual Hours (hours)
           </label>
           <input
@@ -209,10 +156,7 @@ const Task = () => {
           />
         </div>
         <div className="mb-4">
-          <label
-            className="block text-gray-700 text-sm font-bold mb-2"
-            htmlFor="notes"
-          >
+          <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="notes">
             Notes
           </label>
           <textarea
@@ -225,69 +169,60 @@ const Task = () => {
         </div>
         <div className="flex items-center justify-between">
           <button
-          onClick={handleSubmit}
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             type="submit"
           >
-          Submit
-          
+            Submit
           </button>
         </div>
       </form>
+
+      {error && (
+        <h1 className="text-red-600">Duplicate Task cannot be saved</h1>
+      )}
+
+      <div className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Task List</h1>
+        <ul className="space-y-4">
+          {tasks.map(task => (
+            <li key={task._id} className="p-4 border rounded-md shadow-sm bg-white">
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-lg font-semibold">
+                    <span className="text-lg text-black">Task No. :</span> {task.taskNumber}
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    <span className="text-lg text-black">Estimated Time :</span> {task.timeEstimate} hours
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    <span className="text-lg text-black">Notes :</span> {task.notes}
+                  </div>
+                </div>
+                <div className="space-x-2">
+                  {!task.completed && (
+                    <button
+                      onClick={() => editTask(task._id)}
+                      className="py-1 px-3 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  <button
+                    onClick={() => completeTask(task._id)}
+                    className={`py-1 px-3 text-sm font-medium text-white rounded-md ${
+                      task.completed ? 'bg-red-600' : 'bg-green-600'
+                    }`}
+                    disabled={task.completed}
+                  >
+                    {task.completed ? 'Completed' : 'Complete'}
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
-
-    {error&&(
-      <h1 className="text-red-600">Duplicate Task cannot be saved</h1>
-    )}
-
-
-    <div className="p-4">
-  <h1 className="text-2xl font-bold mb-4">Task List</h1>
-  <ul className="space-y-4">
-    {tasks.map(task => (
-      <li key={task._id} className="p-4 border rounded-md shadow-sm bg-white">
-        <div className="flex justify-between items-center">
-          <div>
-            <div className="text-lg font-semibold"><span className="text-lg text-black">Task No. : </span>{task.taskNumber}</div>
-            <div className="text-sm text-gray-500"><span className="text-lg text-black" >Estimated Time : </span>{task.timeEstimate} hours</div>
-            <div className="text-sm text-gray-500"><span className="text-lg text-black">Notes : </span> {task.notes}</div> {/* Added line for notes */}
-          </div>
-          <div className="space-x-2">
-            {!task.completed && (
-              <button
-              onClick={() => { 
-                editTask(task._id);
-                setEdit(true);
-              }}
-
-                className="py-1 px-3 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-              >
-                Edit
-              </button>
-            )}
-            <button
-  onClick={() => completeTask(task._id)}
-  className={`py-1 px-3 text-sm font-medium text-white rounded-md  ${
-    task.completed ? 'bg-red-600 ' : 'bg-green-600'
-  }`}
-  disabled={task.completed} // Disable the button if task is completed
->
-  {task.completed ? 'Completed' : 'Complete'}
-</button>
-
-          </div>
-        </div>
-      </li>
-    ))}
-  </ul>
-</div>
-
-    </>
-
-
-
-
-
   );
 };
 
